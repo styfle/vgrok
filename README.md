@@ -22,5 +22,8 @@ Then start the vgrok cli with the port of your local server, for example:
 
 ## Caveats
 
-- Currently does not reuse sandbox
-- Currently has limitation of 45 min
+- Does not reuse existing sandbox instance
+- The sandbox has a timeout of 45 min
+- Does not stop sandbox automatically when client disconnects
+- Does not handle multiple connections to the same sandbox (I think?)
+- Logs are really noisy right now

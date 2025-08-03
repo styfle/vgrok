@@ -40,7 +40,7 @@ async function main() {
       vcpus: 2,
     },
     ports: [PORT],
-    timeout: 300_000,
+    timeout: 2_700_000, // 45 minutes
   });
 
   const whoami = await sandbox.runCommand('whoami')
@@ -80,7 +80,7 @@ async function main() {
 
   const node = await sandbox.runCommand({
     cmd: 'node',
-    args: ['--experimental-strip-types', 'server.ts'],
+    args: ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'server.ts'],
     detached: true,
     env: {
       REMOTE_PORT: String(PORT),
@@ -89,8 +89,6 @@ async function main() {
     stderr: process.stderr,
     stdout: process.stdout,
   });
-
-  console.log('Server startedAt', new Date(node.startedAt));
 
   console.log('Starting local client...');
   const tunnel = new WebSocket(sandboxUrl + SOCKET_PATH);
