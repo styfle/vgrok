@@ -6,6 +6,7 @@
   },
   "packageManager": "pnpm@10.14.0",
   "dependencies": {
+    "@vercel/sandbox": "^0.0.15",
     "ws": "^8.18.3"
   },
   "devDependencies": {

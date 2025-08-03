@@ -1,25 +1,30 @@
-// tunnel-server.js (remote)
-import http from "http";
-import { WebSocketServer } from "ws";
-import crypto from "crypto";
-import { REMOTE_PORT } from "./shared.ts";
-
-console.log(WebSocketServer)
+import http from 'http';
+import { WebSocketServer } from 'ws';
+import { randomUUID } from 'crypto';
+const { REMOTE_PORT, SOCKET_PATH } = process.env;
+if (!REMOTE_PORT) {
+  throw new Error('REMOTE_PORT environment variable is not set');
+}
+if (!SOCKET_PATH) {
+  throw new Error('SOCKET_PATH environment variable is not set');
+}
+console.log('Starting tunnel server on port', REMOTE_PORT);
 const wss = new WebSocketServer({ noServer: true });
 const clients = new Map<string, import('ws').WebSocket>();
 const responses = new Map<string, http.ServerResponse>();
 
-wss.on("connection", (ws) => {
-  const clientId = crypto.randomUUID();
+wss.on('connection', (ws) => {
+  const clientId = randomUUID();
   clients.set(clientId, ws);
 
-  ws.on("close", () => {
+  ws.on('close', () => {
+    console.log('Client disconnected:', clientId);
     clients.delete(clientId);
   });
 
-  ws.on("message", (msg) => {
-    console.log("Received message from client:", msg);
-    const response = JSON.parse(msg);
+  ws.on('message', (msg) => {
+    console.log('Message received from client:', msg.toString());
+    const response = JSON.parse(msg.toString());
     const { id, statusCode, headers, body } = response;
     const res = responses.get(id);
     if (res) {
@@ -32,20 +37,26 @@ wss.on("connection", (ws) => {
 
 
 const server = http.createServer((req, res) => {
+  console.log('HTTP request received:', req.method, req.url);
   // Send to the first connected client
+  // TODO: should we broadcast to all clients?
   const [_clientId, client] = clients.entries().next().value || [];
 
-  if (!client || client.readyState !== WebSocket.OPEN) {
+  if (!client) {
     res.writeHead(502);
-    return res.end("No tunnel client connected");
+    return res.end('No tunnel client connected. Did you forget to start vgrok?');
+  }
+  if (client.readyState !== WebSocket.OPEN) {
+    res.writeHead(502);
+    return res.end(`Tunnel client socket is not open: ${client.readyState}`);
   }
 
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   responses.set(id, res);
 
   let chunks: Buffer[] = [];
-  req.on("data", chunk => chunks.push(chunk));
-  req.on("end", () => {
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
     client.send(JSON.stringify({
       id,
       method: req.method,
@@ -56,10 +67,11 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.on("upgrade", (req, socket, head) => {
-  if (req.url === "/ws") {
+server.on('upgrade', (req, socket, head) => {
+  console.log('Upgrade request received:', req.url);
+  if (req.url === SOCKET_PATH) {
     wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit("connection", ws, req);
+      wss.emit('connection', ws, req);
     });
   }
 });
