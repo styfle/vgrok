@@ -1,8 +1,8 @@
 {
   "private": true,
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "bin": {
+    "vgrok": "./vgrok.ts"
   },
   "packageManager": "pnpm@10.14.0",
   "dependencies": {

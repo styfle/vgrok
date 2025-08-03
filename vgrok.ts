@@ -1,3 +1,4 @@
+#!/usr/bin/env node --experimental-transform-types --disable-warning=ExperimentalWarning
 import { CommandFinished, Sandbox } from '@vercel/sandbox';
 import { readFileSync } from 'fs';
 import http from 'http';
@@ -49,7 +50,6 @@ async function main() {
   console.log(`Working dir: ${await pwd.stdout()}`)
 
   const sandboxUrl = sandbox.domain(PORT);
-  console.log(`Sandbox URL: ${sandboxUrl}`);
   console.log(`Sandbox ID: ${sandbox.sandboxId}`);
 
   await sandbox.writeFiles([
@@ -98,8 +98,8 @@ async function main() {
   tunnel.addEventListener('message', async (event) => {
     const data = event.data as string;
     console.log('Message received from tunnel:', data);
-    const parsedData = JSON.parse(data) as TunnelRequest;
-    const { id, method, url, headers, body } = parsedData;
+    const tunnelRequest = JSON.parse(data) as TunnelRequest;
+    const { id, method, url, headers, body } = tunnelRequest;
   
     // Forward request to local server
     const req = http.request({
@@ -116,7 +116,7 @@ async function main() {
           id,
           statusCode: res.statusCode ?? 999,
           headers: res.headers as Record<string, string>,
-          body: Buffer.concat(chunks).toString(),
+          body: Buffer.concat(chunks).toString(), // TODO: use base64
         } satisfies TunnelResponse));
       });
     });
@@ -126,6 +126,8 @@ async function main() {
     }
     req.end();
   });
+
+  console.log(`Ready at ${sandboxUrl}`);
 }
 
 main().catch(console.error)

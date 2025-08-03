@@ -1,3 +1,4 @@
+#!/usr/bin/env node --experimental-transform-types --disable-warning=ExperimentalWarning
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import { randomUUID } from 'crypto';
@@ -38,9 +39,10 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('message', (msg) => {
-    console.log('Message received from client:', msg.toString());
-    const response = JSON.parse(msg.toString());
-    const { id, statusCode, headers, body } = response;
+    const data = msg.toString();
+    console.log('Message received from client:', data);
+    const tunnelResponse = JSON.parse(data) as TunnelResponse;
+    const { id, statusCode, headers, body } = tunnelResponse;
     const res = responses.get(id);
     if (res) {
       res.writeHead(statusCode, headers);
