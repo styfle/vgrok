@@ -2,6 +2,7 @@ import { CommandFinished, Sandbox } from '@vercel/sandbox';
 import { readFileSync } from 'fs';
 import http from 'http';
 import { join } from 'path';
+import type { TunnelRequest, TunnelResponse } from './server.ts'
 
 const PORT = 3000;
 const SOCKET_PATH = '/_ws';
@@ -95,8 +96,10 @@ async function main() {
   const tunnel = new WebSocket(sandboxUrl + SOCKET_PATH);
   
   tunnel.addEventListener('message', async (event) => {
-    console.log('Message received from tunnel:', event.data);
-    const { id, method, url, headers, body } = JSON.parse(event.data);
+    const data = event.data as string;
+    console.log('Message received from tunnel:', data);
+    const parsedData = JSON.parse(data) as TunnelRequest;
+    const { id, method, url, headers, body } = parsedData;
   
     // Forward request to local server
     const req = http.request({
@@ -111,10 +114,10 @@ async function main() {
       res.on('end', () => {
         tunnel.send(JSON.stringify({
           id,
-          statusCode: res.statusCode,
-          headers: res.headers,
+          statusCode: res.statusCode ?? 999,
+          headers: res.headers as Record<string, string>,
           body: Buffer.concat(chunks).toString(),
-        }));
+        } satisfies TunnelResponse));
       });
     });
   

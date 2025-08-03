@@ -13,6 +13,21 @@ const wss = new WebSocketServer({ noServer: true });
 const clients = new Map<string, import('ws').WebSocket>();
 const responses = new Map<string, http.ServerResponse>();
 
+export type TunnelRequest = {
+  id: string;
+  method: string | undefined;
+  url: string | undefined;
+  headers: Record<string, string> | undefined;
+  body: string | undefined;
+}
+
+export type TunnelResponse = {
+  id: string;
+  statusCode: number;
+  headers: Record<string, string>;
+  body: string;
+}
+
 wss.on('connection', (ws) => {
   const clientId = randomUUID();
   clients.set(clientId, ws);
@@ -56,15 +71,13 @@ const server = http.createServer((req, res) => {
 
   let chunks: Buffer[] = [];
   req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    client.send(JSON.stringify({
-      id,
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-      body: Buffer.concat(chunks).toString(),
-    }));
-  });
+  req.on('end', () => client.send(JSON.stringify({
+    id,
+    method: req.method,
+    url: req.url,
+    headers: req.headers as Record<string, string>,
+    body: Buffer.concat(chunks).toString(), // TODO: use base64
+  } satisfies TunnelRequest)));
 });
 
 server.on('upgrade', (req, socket, head) => {
