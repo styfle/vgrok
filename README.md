@@ -4,6 +4,9 @@ Get a secure public URL for your local web server so you can trigger webhooks, e
 
 Built with [Vercel sandbox](https://vercel.com/docs/vercel-sandbox).
 
+> [!IMPORTANT]
+> vgrok is designed for quick local development. If you want quick production and preview deployments with secure public urls, [connect your repo to Vercel](https://vercel.com/new) so you can automatically deploy on `git push`.
+
 ## Usage
 
 First, set environment variables so vgrok knows where to create the sandbox server:
@@ -20,10 +23,21 @@ Then start the vgrok cli with the port of your local server, for example:
 ./vgrok.ts 3000
 ```
 
+This will print a unique url so that your local server on port 3000, like `next dev`, is now accessible to the world.
+
+The default behavior is to shutdown the connection and corresponding sandbox when the vgrok process exits (CTRL+C).
+
+If you plan to run vgrok more frequently and don't want to wait a couple seconds for the sandbox, you can reuse a sandbox, or rather not shutdown the sandbox when the vgrok process exits.
+
+```sh
+./vgrok.ts 3000 start # create a sandbox and connect the tunnel
+# CTRL+C will disconnect the tunnel but not shudown the sandbox
+./vgrok.ts 3000 stop  # shutdown the sandbox 
+```
+
 ## Caveats
 
-- Does not reuse existing sandbox instance
-- The sandbox has a timeout of 45 min
-- Does not stop sandbox automatically when client disconnects
-- Does not handle multiple connections to the same sandbox (I think?)
-- Logs are really noisy right now
+- The sandbox has a timeout of 45 min (need to spawn a new sandbox on timeout)
+- Does not handle multiple connections to the same sandbox (is this useful, maybe cost?)
+- Logs are really noisy right now (need to hide behind verbose flag)
+

@@ -1,15 +1,14 @@
 #!/usr/bin/env node --experimental-transform-types --disable-warning=ExperimentalWarning
-import http from 'http';
+import http from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { WebSocketServer } from 'ws';
-import { randomUUID } from 'crypto';
-const { REMOTE_PORT, SOCKET_PATH } = process.env;
-if (!REMOTE_PORT) {
-  throw new Error('REMOTE_PORT environment variable is not set');
+const { SANDBOX_PORT, WS_PATH } = process.env;
+if (!SANDBOX_PORT) {
+  throw new Error('SANDBOX_PORT environment variable is not set');
 }
-if (!SOCKET_PATH) {
-  throw new Error('SOCKET_PATH environment variable is not set');
+if (!WS_PATH) {
+  throw new Error('WS_PATH environment variable is not set');
 }
-console.log('Starting tunnel server on port', REMOTE_PORT);
 const wss = new WebSocketServer({ noServer: true });
 const clients = new Map<string, import('ws').WebSocket>();
 const responses = new Map<string, http.ServerResponse>();
@@ -56,7 +55,7 @@ wss.on('connection', (ws) => {
 const server = http.createServer((req, res) => {
   console.log('HTTP request received:', req.method, req.url);
   // Send to the first connected client
-  // TODO: should we broadcast to all clients?
+  // TODO: Determine correct client once we allocate multiple ports per sandbox
   const [_clientId, client] = clients.entries().next().value || [];
 
   if (!client) {
@@ -78,19 +77,19 @@ const server = http.createServer((req, res) => {
     method: req.method,
     url: req.url,
     headers: req.headers as Record<string, string>,
-    body: Buffer.concat(chunks).toString(), // TODO: use base64
+    body: Buffer.concat(chunks).toString('utf8'),
   } satisfies TunnelRequest)));
 });
 
 server.on('upgrade', (req, socket, head) => {
   console.log('Upgrade request received:', req.url);
-  if (req.url === SOCKET_PATH) {
+  if (req.url === WS_PATH) {
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit('connection', ws, req);
     });
   }
 });
 
-server.listen(REMOTE_PORT, () => {
-  console.log(`Tunnel server listening on :${REMOTE_PORT}`);
+server.listen(SANDBOX_PORT, () => {
+  console.log(`Tunnel server listening on :${SANDBOX_PORT}`);
 });

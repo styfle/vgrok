@@ -1,12 +1,25 @@
 #!/usr/bin/env node --experimental-transform-types --disable-warning=ExperimentalWarning
 import { CommandFinished, Sandbox } from '@vercel/sandbox';
-import { readFileSync } from 'fs';
-import http from 'http';
-import { join } from 'path';
-import type { TunnelRequest, TunnelResponse } from './server.ts'
+import { readFile, writeFile } from 'node:fs/promises';
+import http from 'node:http';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import type { TunnelRequest, TunnelResponse } from './server.ts';
 
-const PORT = 3000;
-const SOCKET_PATH = '/_ws';
+type VgrokConfig = { localPortToSandbox: Record<string, { id: string, createdAt: number}> };
+
+const SANDBOX_PORT = 3000;
+const SANDBOX_TIMEOUT = 2_700_000; // 45min
+const WS_PATH = '/_ws';
+const VGROK_CONFIG_PATH = join(tmpdir(), './vgrok-config.json');
+
+async function shutdown(sandbox: Sandbox | null) {
+  console.log('Shutting down sandbox...')
+  if (sandbox) {
+    await sandbox.stop();
+  }
+  console.log('Done.')
+}
 
 async function writeLogs(cmd: CommandFinished) {
   for await (const log of cmd.logs()) {
@@ -19,79 +32,105 @@ async function writeLogs(cmd: CommandFinished) {
 }
 
 async function main() {
-  const firstArg = process.argv[2];
+  const [firstArg, secondArg] = process.argv.slice(2);
   if (!firstArg) {
     throw new Error('Please provide a port as the first argument');
   }
   const localPort = Number(firstArg);
-  if (isNaN(localPort)) {
+  if (isNaN(localPort) || localPort < 1 || localPort > 65535) {
     throw new Error('The first argument must be a valid port number');
   }
+  const config = await readFile(VGROK_CONFIG_PATH, 'utf8')
+    .then(str => JSON.parse(str) as VgrokConfig)
+    .catch(() => null);
+  const localPortToSandbox = config ? config.localPortToSandbox : {};
+  // TODO: can we use VERCEL_OIDC_TOKEN instead of these 3?
   const teamId = process.env.VERCEL_TEAM_ID || ''
   const projectId = process.env.VERCEL_PROJECT_ID || ''
   const token = process.env.VERCEL_TOKEN || ''
+  let sandbox: Sandbox | null = null;
 
-  const sandbox = await Sandbox.create({
-    teamId,
-    projectId,
-    token,
-    runtime: 'node22',
-    resources: {
-      vcpus: 2,
-    },
-    ports: [PORT],
-    timeout: 2_700_000, // 45 minutes
-  });
+  if (localPortToSandbox[localPort]) {
+    const { id, createdAt } = localPortToSandbox[localPort];
+    console.log(`Reusing existing sandbox for port ${localPort} with ID ${id}`);
+    // sandbox = await Sandbox.get({ teamId, projectId, token, sandboxId: id }).catch(() => null);
+    // TODO: for some reason, we can't catch this APIError: Status code 410 is not ok
+    if (secondArg === 'stop') {
+      await shutdown(sandbox);
+      return 0;
+    }
+    if (Date.now() - createdAt > SANDBOX_TIMEOUT) {
+      // assume sandbox is gone now since it's past the timeout
+      sandbox = null;
+    }
+  } 
+  
+  if (!sandbox) {
+    console.log(`Creating new sandbox for port ${localPort}`);
+    sandbox = await Sandbox.create({
+      teamId,
+      projectId,
+      token,
+      runtime: 'node22',
+      resources: {
+        vcpus: 2,
+      },
+      ports: [SANDBOX_PORT], // TODO: allocate multiple ports to map back to local port
+      timeout: SANDBOX_TIMEOUT,
+    });
+    localPortToSandbox[localPort] = { id: sandbox.sandboxId, createdAt: Date.now() };
+    await writeFile(
+      VGROK_CONFIG_PATH,
+      JSON.stringify({ localPortToSandbox } satisfies VgrokConfig)
+    );
+    setTimeout(async () => {
+      // TODO: can we spawn a new sandbox automatically when timeout reached?
+      // Alternatively we can kill the ngrok process to avoid confusion.
+    }, SANDBOX_TIMEOUT);
+  }
 
-  const whoami = await sandbox.runCommand('whoami')
-  console.log(`Running as: ${await whoami.stdout()}`)
+  if (secondArg === 'start') {
+    // The `start` command means we expect a `stop` command later to shutdown.
+    // For example, `vgrok 8000 start` and later `vgrok 8000 stop`.
+  } else {
+    // If no `start` command provided, that means automatically shutdown when vgrok exits.
+    // For example, `vgrok 8000` and then later CTRL+C.
+    process.on('SIGINT', () => shutdown(sandbox))
+    process.on('SIGTERM', () => shutdown(sandbox))
+  }
 
-  const pwd = await sandbox.runCommand('pwd')
-  console.log(`Working dir: ${await pwd.stdout()}`)
-
-  const sandboxUrl = sandbox.domain(PORT);
+  const sandboxUrl = sandbox.domain(SANDBOX_PORT);
   console.log(`Sandbox ID: ${sandbox.sandboxId}`);
 
   await sandbox.writeFiles([
-    /*
-    {
-      content: readFileSync(join(import.meta.dirname, '../package.json')),
-      path: 'package.json'
-    },
-    {
-      content: readFileSync(join(import.meta.dirname, '../pnpm-lock.yaml')),
-      path: 'pnpm-lock.yaml'
-    },
-    */
    {
       content: Buffer.from(JSON.stringify({ private: true, type: 'module', dependencies: { ws: '8.18.3' } })),
-      path: 'package.json'
+      path: 'package.json',
     },
     {
-      content: readFileSync(join(import.meta.dirname, './server.ts')),
-      path: 'server.ts'
+      content: await readFile(join(import.meta.dirname, './server.ts')),
+      path: 'server.ts',
+      // TODO: can we mark a file as executable?
     },
   ]);
-  const ls = await sandbox.runCommand('ls', ['-A']);
-  await writeLogs(ls);
   
   const pnpm = await sandbox.runCommand('pnpm', ['install']);
   await writeLogs(pnpm);
 
-  const node = await sandbox.runCommand({
+  await sandbox.runCommand({
     cmd: 'node',
     args: ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'server.ts'],
     detached: true,
     env: {
-      REMOTE_PORT: String(PORT),
-      SOCKET_PATH,
+      SANDBOX_PORT: String(SANDBOX_PORT),
+      WS_PATH: WS_PATH,
     },
-    stderr: process.stderr,
-    stdout: process.stdout,
+    stderr: process.stderr, // TODO: hide
+    stdout: process.stdout, // TODO: hide
   });
 
   console.log('Starting local client...');
-  const tunnel = new WebSocket(sandboxUrl + SOCKET_PATH);
+  const tunnel = new WebSocket(sandboxUrl + WS_PATH);
   
   tunnel.addEventListener('message', async (event) => {
     const data = event.data as string;
@@ -114,7 +153,7 @@ async function main() {
           id,
           statusCode: res.statusCode ?? 999,
           headers: res.headers as Record<string, string>,
-          body: Buffer.concat(chunks).toString(), // TODO: use base64
+          body: Buffer.concat(chunks).toString('utf8')
         } satisfies TunnelResponse));
       });
     });
@@ -123,6 +162,16 @@ async function main() {
       req.write(body);
     }
     req.end();
+  });
+
+  tunnel.addEventListener('error', (event) => {
+    // TODO: should this shutdown the sandbox?
+    console.error('Unexpected socket error', event.error);
+  });
+
+  tunnel.addEventListener('close', (event) => {
+    // TODO: should this shutdown the sandbox?
+    console.error('Socket closed', event);
   });
 
   console.log(`Ready at ${sandboxUrl}`);
