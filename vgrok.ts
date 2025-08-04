@@ -99,8 +99,8 @@ async function main() {
   } else {
     // If no `start` command provided, that means automatically shutdown when vgrok exits.
     // For example, `vgrok 8000` and then later CTRL+C.
-    process.on('SIGINT', () => shutdown(sandbox))
-    process.on('SIGTERM', () => shutdown(sandbox))
+    process.on('SIGINT', async () => { await shutdown(sandbox); process.exit(0); });
+    process.on('SIGTERM', async () => { await shutdown(sandbox); process.exit(0); });
   }
 
   const sandboxUrl = sandbox.domain(SANDBOX_PORT);
@@ -128,8 +128,8 @@ async function main() {
       SANDBOX_PORT: String(SANDBOX_PORT),
       WS_PATH: WS_PATH,
     },
-    stderr: process.stderr, // TODO: hide
-    stdout: process.stdout, // TODO: hide
+    //stderr: process.stderr, // TODO: hide
+    //stdout: process.stdout, // TODO: hide
   });
 
   console.log('Starting local client...');
@@ -175,6 +175,7 @@ async function main() {
   tunnel.addEventListener('close', (event) => {
     // TODO: should this shutdown the sandbox?
     console.error('Socket closed', event);
+    process.exit(1);
   });
 
   console.log(`Ready at ${sandboxUrl}`);
