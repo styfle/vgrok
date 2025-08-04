@@ -1,8 +1,13 @@
 {
-  "private": true,
+  "name": "vgrok",
+  "version": "0.0.1",
   "type": "module",
   "bin": {
-    "vgrok": "./vgrok.ts"
+    "vgrok": "vgrok.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/styfle/vgrok.git"
   },
   "packageManager": "pnpm@10.14.0",
   "dependencies": {
