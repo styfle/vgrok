@@ -53,8 +53,12 @@ async function main() {
   if (localPortToSandbox[localPort]) {
     const { id, createdAt } = localPortToSandbox[localPort];
     console.log(`Reusing existing sandbox for port ${localPort} with ID ${id}`);
-    // sandbox = await Sandbox.get({ teamId, projectId, token, sandboxId: id }).catch(() => null);
-    // TODO: for some reason, we can't catch this APIError: Status code 410 is not ok
+    sandbox = await Sandbox.get({ teamId, projectId, token, sandboxId: id }).catch(() => null);
+    // @ts-expect-error The types are missing here.
+    if (sandbox.sandbox.status === 'stopped') {
+      console.log(`Sandbox with ID ${id} was stopped`);
+      sandbox = null;
+    }
     if (secondArg === 'stop') {
       await shutdown(sandbox);
       return 0;
@@ -100,7 +104,6 @@ async function main() {
   }
 
   const sandboxUrl = sandbox.domain(SANDBOX_PORT);
-  console.log(`Sandbox ID: ${sandbox.sandboxId}`);
 
   await sandbox.writeFiles([
    {
