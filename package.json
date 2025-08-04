@@ -1,5 +1,5 @@
 {
-  "name": "vgrok",
+  "name": "@styfle/vgrok",
   "version": "0.0.1",
   "type": "module",
   "bin": {
@@ -8,6 +8,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/styfle/vgrok.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "packageManager": "pnpm@10.14.0",
   "dependencies": {
