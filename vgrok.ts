@@ -54,9 +54,8 @@ async function main() {
     const { id, createdAt } = localPortToSandbox[localPort];
     console.log(`Reusing existing sandbox for port ${localPort} with ID ${id}`);
     sandbox = await Sandbox.get({ teamId, projectId, token, sandboxId: id }).catch(() => null);
-    // @ts-expect-error The types are missing here.
-    if (sandbox.sandbox.status === 'stopped') {
-      console.log(`Sandbox with ID ${id} was stopped`);
+    if (sandbox && sandbox.status !== 'running') {
+      console.log(`Sandbox with ID ${id} is not runnning`);
       sandbox = null;
     }
     if (secondArg === 'stop') {

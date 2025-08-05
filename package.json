@@ -1,6 +1,6 @@
 {
   "name": "@styfle/vgrok",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "bin": {
     "vgrok": "vgrok.ts"
@@ -14,7 +14,7 @@
   },
   "packageManager": "pnpm@10.14.0",
   "dependencies": {
-    "@vercel/sandbox": "^0.0.15"
+    "@vercel/sandbox": "^0.0.16"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",
