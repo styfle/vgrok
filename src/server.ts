@@ -45,7 +45,7 @@ wss.on('connection', (ws) => {
     const res = responses.get(id);
     if (res) {
       res.writeHead(statusCode, headers);
-      res.end(body);
+      res.end(Buffer.from(body, 'base64url'));
       responses.delete(id);
     }
   });
@@ -77,7 +77,7 @@ const server = http.createServer((req, res) => {
     method: req.method,
     url: req.url,
     headers: req.headers as Record<string, string>,
-    body: Buffer.concat(chunks).toString('utf8'),
+    body: Buffer.concat(chunks).toString('base64url'),
   } satisfies TunnelRequest)));
 });
 
