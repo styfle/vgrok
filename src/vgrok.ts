@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { TunnelRequest, TunnelResponse } from './server.ts';
+import type { TunnelRequest, TunnelResponse } from './server.js';
 
 type VgrokConfig = { localPortToSandbox: Record<string, { id: string, createdAt: number}> };
 
@@ -110,8 +110,8 @@ async function main() {
       path: 'package.json',
     },
     {
-      content: await readFile(join(import.meta.dirname, './server.ts')),
-      path: 'server.ts',
+      content: await readFile(join(import.meta.dirname, './server.js')),
+      path: 'server.js',
       // TODO: can we mark a file as executable?
     },
   ]);
@@ -121,7 +121,7 @@ async function main() {
 
   await sandbox.runCommand({
     cmd: 'node',
-    args: ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'server.ts'],
+    args: ['server.js'],
     detached: true,
     env: {
       SANDBOX_PORT: String(SANDBOX_PORT),
