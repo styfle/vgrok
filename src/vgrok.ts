@@ -155,13 +155,13 @@ async function main() {
           id,
           statusCode: res.statusCode ?? 999,
           headers: res.headers as Record<string, string>,
-          body: Buffer.concat(chunks).toString('utf8')
+          body: Buffer.concat(chunks).toString('base64url')
         } satisfies TunnelResponse));
       });
     });
   
     if (body) {
-      req.write(body);
+      req.write(Buffer.from(body, 'base64url'));
     }
     req.end();
   });
