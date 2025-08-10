@@ -3,7 +3,14 @@
   "version": "0.0.3",
   "type": "module",
   "bin": {
-    "vgrok": "vgrok.ts"
+    "vgrok": "dist/vgrok.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "tsc"
   },
   "repository": {
     "type": "git",

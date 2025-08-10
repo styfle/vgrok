@@ -1,15 +1,16 @@
 {
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
+    "outDir": "dist",
     "module": "nodenext",
     "target": "esnext",
     "lib": ["esnext"],
    
 
     // Other Outputs
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
+    "sourceMap": false,
+    "declaration": false,
+    "declarationMap": false,
 
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
@@ -31,9 +32,5 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-
-    // Node.js Strip Types
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
   }
 }
