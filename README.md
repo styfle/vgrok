@@ -43,7 +43,7 @@ vgrok 3000 stop  # shutdown the sandbox
 
 ## Caveats
 
-- The sandbox has a timeout of 45 min (need to spawn a new sandbox on timeout)
+- The sandbox has a timeout of 45 min for Hobby teams (need to spawn a new sandbox on timeout)
 - The sandbox only runs in the `iad1` region (might feel slow if you're outside US East)
 - Does not handle multiple connections to the same sandbox (is this useful, might bring down cost?)
 - Logs are really noisy right now (need to hide behind verbose flag)
