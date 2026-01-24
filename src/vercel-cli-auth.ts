@@ -80,4 +80,3 @@ export function vercelCliAuth() {
 
   return { token, teamId, projectId };
 }
-
