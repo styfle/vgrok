@@ -9,8 +9,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "tsc"
+    "build": "tsgo",
+    "prepublishOnly": "tsgo"
   },
   "repository": {
     "type": "git",
@@ -26,6 +26,6 @@
   "devDependencies": {
     "@types/node": "^24.1.0",
     "@types/ws": "^8.18.1",
-    "typescript": "^5.9.2"
+    "@typescript/native-preview": "7.0.0-dev.20260124.1"
   }
 }
