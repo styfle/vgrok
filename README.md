@@ -9,13 +9,21 @@ Built with [Vercel sandbox](https://vercel.com/docs/vercel-sandbox).
 
 ## Usage
 
-First,Install globally from npm
+First, install globally from npm:
 
 ```sh
 npm i -g @styfle/vgrok
 ```
 
-Next, set environment variables so vgrok knows where to create the sandbox server:
+Next, install vercel cli from npm and login and link to a project:
+
+```sh
+npm i -g vercel
+vercel login
+vercel link
+```
+
+If you don't want to install vercel cli, you can optionally set environment variables:
 
 ```sh
 export VERCEL_TEAM_ID=team_abc 
@@ -23,7 +31,7 @@ export VERCEL_PROJECT_ID=prj_123
 export VERCEL_TOKEN=mytoken
 ```
 
-Then start the vgrok cli with the port of your local server, for example:
+Finally, start the vgrok cli with the port of your local server, for example:
 
 ```sh
 vgrok 3000
