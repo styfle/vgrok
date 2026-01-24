@@ -1,6 +1,6 @@
 {
   "name": "@styfle/vgrok",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "type": "module",
   "bin": {
     "vgrok": "dist/vgrok.js"
