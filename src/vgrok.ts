@@ -5,7 +5,7 @@ import http from 'node:http';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { TunnelRequest, TunnelResponse } from './server.js';
-import { requireVercelAuth } from './vercel-cli-auth.js';
+import { vercelCliAuth } from './vercel-cli-auth.js';
 
 type VgrokConfig = { localPortToSandbox: Record<string, { id: string, createdAt: number}> };
 
@@ -45,7 +45,7 @@ async function main() {
     .then(str => JSON.parse(str) as VgrokConfig)
     .catch(() => null);
   const localPortToSandbox = config ? config.localPortToSandbox : {};
-  const { token, teamId, projectId } = requireVercelAuth();
+  const { token, teamId, projectId } = vercelCliAuth();
   let sandbox: Sandbox | null = null;
 
   if (localPortToSandbox[localPort]) {
