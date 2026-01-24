@@ -5,6 +5,7 @@ import http from 'node:http';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { TunnelRequest, TunnelResponse } from './server.js';
+import { requireVercelAuth } from './vercel-cli-auth.js';
 
 type VgrokConfig = { localPortToSandbox: Record<string, { id: string, createdAt: number}> };
 
@@ -44,10 +45,7 @@ async function main() {
     .then(str => JSON.parse(str) as VgrokConfig)
     .catch(() => null);
   const localPortToSandbox = config ? config.localPortToSandbox : {};
-  // TODO: can we use VERCEL_OIDC_TOKEN instead of these 3?
-  const teamId = process.env.VERCEL_TEAM_ID || ''
-  const projectId = process.env.VERCEL_PROJECT_ID || ''
-  const token = process.env.VERCEL_TOKEN || ''
+  const { token, teamId, projectId } = requireVercelAuth();
   let sandbox: Sandbox | null = null;
 
   if (localPortToSandbox[localPort]) {
