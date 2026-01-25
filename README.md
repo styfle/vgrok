@@ -23,13 +23,18 @@ vercel login
 vercel link
 ```
 
-If you don't want to install vercel cli, you can optionally set environment variables:
+<details>
+  <summary>Don't want vercel cli?</summary>
+  If you don't want to install vercel cli, perhaps when disk space is constrained, you can set environment variables instead:
+  
+  ```sh
+  export VERCEL_TEAM_ID=team_abc 
+  export VERCEL_PROJECT_ID=prj_123 
+  export VERCEL_TOKEN=mytoken
+  ```
 
-```sh
-export VERCEL_TEAM_ID=team_abc 
-export VERCEL_PROJECT_ID=prj_123 
-export VERCEL_TOKEN=mytoken
-```
+  This is similar to linking a project so vgrok knows where to create the sandbox.
+</details>
 
 Finally, start the vgrok cli with the port of your local server, for example:
 
