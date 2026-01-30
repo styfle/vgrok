@@ -9,6 +9,8 @@ Built with [Vercel sandbox](https://vercel.com/docs/vercel-sandbox).
 
 ## Usage
 
+### CLI Usage
+
 First, install globally from npm:
 
 ```sh
@@ -52,6 +54,45 @@ If you plan to run vgrok more frequently and don't want to wait a couple seconds
 vgrok 3000 start # create a sandbox and connect the tunnel
 # CTRL+C will disconnect the tunnel but not shudown the sandbox
 vgrok 3000 stop  # shutdown the sandbox 
+```
+
+### Programmatic API
+
+You can also use vgrok programmatically in your Node.js application:
+
+```sh
+npm install @styfle/vgrok
+```
+
+```ts
+import { client } from '@styfle/vgrok';
+
+// Create a tunnel for your local server
+const tunnel = await client({ port: 3000 });
+
+console.log(`Tunnel URL: ${tunnel.url}`);
+
+// Do something with the URL...
+// For example, register webhook endpoints
+
+// Shutdown when done
+await tunnel.shutdown();
+```
+
+Options:
+
+- `port` (required): The local port number to tunnel (1-65535)
+- `autoShutdown` (optional): Whether to automatically shutdown on SIGINT/SIGTERM. Default: `true`
+
+You can also use the static `client.shutdown()` method to shutdown the active tunnel:
+
+```ts
+import { client } from '@styfle/vgrok';
+
+await client({ port: 3000 });
+
+// Later, from anywhere in your code:
+await client.shutdown();
 ```
 
 ## Caveats
