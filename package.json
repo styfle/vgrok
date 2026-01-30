@@ -3,14 +3,19 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "vgrok": "dist/vgrok.js"
+    "vgrok": "dist/src/vgrok.js"
+  },
+  "main": "dist/src/client.js",
+  "exports": {
+    ".": "./dist/src/client.js"
   },
   "files": [
     "dist"
   ],
   "scripts": {
     "build": "tsgo",
-    "prepublishOnly": "tsgo"
+    "prepublishOnly": "tsgo",
+    "test": "pnpm build && node --test dist/src/*.test.js"
   },
   "repository": {
     "type": "git",
