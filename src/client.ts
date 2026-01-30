@@ -23,6 +23,8 @@ export interface Client {
   shutdown: () => Promise<void>;
 }
 
+// Note: Currently only one active tunnel is supported at a time
+// Creating multiple tunnels concurrently may lead to unexpected behavior
 let activeSandbox: Sandbox | null = null;
 let activeTunnel: WebSocket | null = null;
 
@@ -63,7 +65,7 @@ export async function client(options: ClientOptions): Promise<Client> {
     console.log(`Reusing existing sandbox for port ${localPort} with ID ${id}`);
     sandbox = await Sandbox.get({ teamId, projectId, token, sandboxId: id }).catch(() => null);
     if (sandbox && sandbox.status !== 'running') {
-      console.log(`Sandbox with ID ${id} is not runnning`);
+      console.log(`Sandbox with ID ${id} is not running`);
       sandbox = null;
     }
     if (Date.now() - createdAt > SANDBOX_TIMEOUT) {
@@ -130,6 +132,12 @@ export async function client(options: ClientOptions): Promise<Client> {
   console.log('Starting local client...');
   const tunnel = new WebSocket(sandboxUrl + WS_PATH);
   activeTunnel = tunnel;
+
+  // Wait for WebSocket connection to be established
+  await new Promise<void>((resolve, reject) => {
+    tunnel.addEventListener('open', () => resolve(), { once: true });
+    tunnel.addEventListener('error', (event) => reject(new Error('Failed to establish WebSocket connection')), { once: true });
+  });
   
   tunnel.addEventListener('message', async (event) => {
     const data = event.data as string;
@@ -156,6 +164,16 @@ export async function client(options: ClientOptions): Promise<Client> {
         } satisfies TunnelResponse));
       });
     });
+
+    req.on('error', (error) => {
+      console.error(`Error forwarding request to local server:`, error);
+      tunnel.send(JSON.stringify({
+        id,
+        statusCode: 502,
+        headers: { 'content-type': 'text/plain' },
+        body: Buffer.from(`Bad Gateway: ${error.message}`).toString('base64url')
+      } satisfies TunnelResponse));
+    });
   
     if (body) {
       req.write(Buffer.from(body, 'base64url'));
@@ -172,7 +190,11 @@ export async function client(options: ClientOptions): Promise<Client> {
     // TODO: should this shutdown the sandbox?
     console.error('Socket closed', event);
     if (autoShutdown) {
-      process.exit(1);
+      // For CLI usage, exit the process
+      // For programmatic usage with autoShutdown, the signal handlers will clean up
+      if (typeof process !== 'undefined' && process.exit) {
+        process.exit(1);
+      }
     }
   });
 
