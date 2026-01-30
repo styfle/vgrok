@@ -79,7 +79,7 @@ console.log(`Tunnel URL: ${tunnel.url}`);
 await tunnel.shutdown();
 ```
 
-Options:
+**Options:**
 
 - `port` (required): The local port number to tunnel (1-65535)
 - `autoShutdown` (optional): Whether to automatically shutdown on SIGINT/SIGTERM. Default: `true`
@@ -94,6 +94,8 @@ await client({ port: 3000 });
 // Later, from anywhere in your code:
 await client.shutdown();
 ```
+
+**Note:** Currently only one active tunnel is supported at a time. Creating multiple tunnels concurrently may lead to unexpected behavior.
 
 ## Caveats
 
