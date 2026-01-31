@@ -72,11 +72,9 @@ export async function client({ port, timeout }: { port: number, timeout: number 
       VGROK_CONFIG_PATH,
       JSON.stringify({ localPortToSandbox } satisfies VgrokConfig)
     );
-    setTimeout(async () => {
-      // TODO: can we spawn a new sandbox automatically when timeout reached?
-      // Alternatively we can kill the ngrok process to avoid confusion.
-      console.error(`Sandbox for port ${localPort} has reached its timeout of ${timeout}ms`);
-    }, timeout);
+    // TODO: can we spawn a new sandbox automatically when timeout reached?
+    //   setTimeout(async () => { newSandbox() }, timeout);
+    // Alternatively we can kill the ngrok process to avoid confusion.
   }
   
   const sandboxUrl = sandbox.domain(SANDBOX_PORT);
@@ -157,6 +155,6 @@ export async function client({ port, timeout }: { port: number, timeout: number 
     url: sandboxUrl,
     shutdown: async () => {
       await shutdown(sandbox);
-    },
+    }
   }
 }
