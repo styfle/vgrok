@@ -9,7 +9,7 @@
 
     // Other Outputs
     "sourceMap": false,
-    "declaration": false,
+    "declaration": true,
     "declarationMap": false,
 
     // Stricter Typechecking Options
