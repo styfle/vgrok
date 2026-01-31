@@ -45,7 +45,7 @@ export async function client({ port, timeout }: { port: number, timeout: number 
     console.log(`Reusing existing sandbox for port ${localPort} with ID ${id}`);
     sandbox = await Sandbox.get({ teamId, projectId, token, sandboxId: id }).catch(() => null);
     if (sandbox && sandbox.status !== 'running') {
-      console.log(`Sandbox with ID ${id} is not runnning`);
+      console.log(`Sandbox with ID ${id} is not running`);
       sandbox = null;
     }
     if (Date.now() - createdAt > timeout) {
