@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "vgrok": "dist/vgrok.js"
+    "vgrok": "./dist/src/vgrok.js"
   },
+  "main": "./dist/src/client.js",
   "files": [
     "dist"
   ],

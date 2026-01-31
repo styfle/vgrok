@@ -7,7 +7,7 @@ Built with [Vercel sandbox](https://vercel.com/docs/vercel-sandbox).
 > [!IMPORTANT]
 > vgrok is designed for quick local development. If you want quick production and preview deployments with secure public urls, [connect your repo to Vercel](https://vercel.com/new) so you can automatically deploy on `git push`.
 
-## Usage
+## CLI Usage
 
 First, install globally from npm:
 
@@ -52,6 +52,16 @@ If you plan to run vgrok more frequently and don't want to wait a couple seconds
 vgrok 3000 start # create a sandbox and connect the tunnel
 # CTRL+C will disconnect the tunnel but not shudown the sandbox
 vgrok 3000 stop  # shutdown the sandbox 
+```
+
+## Programmatic Usage
+
+```ts
+import { client } from '@styfle/vgrok';
+const tunnel = await client({ port: 3000, timeout: 2_700_000 });
+console.log(`Ready at ${tunnel.url}`);
+process.on('SIGINT', async () => { await tunnel.shutdown(); });
+process.on('SIGTERM', async () => { await tunnel.shutdown(); });
 ```
 
 ## Caveats
