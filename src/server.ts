@@ -1,4 +1,4 @@
-#!/usr/bin/env node --experimental-transform-types --disable-warning=ExperimentalWarning
+#!/usr/bin/env node
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer } from 'ws';

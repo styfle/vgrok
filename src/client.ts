@@ -1,4 +1,3 @@
-#!/usr/bin/env node --experimental-transform-types --disable-warning=ExperimentalWarning
 import { CommandFinished, Sandbox } from '@vercel/sandbox';
 import { readFile, writeFile } from 'node:fs/promises';
 import http from 'node:http';
@@ -49,12 +48,16 @@ export async function client({ port, timeout }: { port: number, timeout: number 
       sandbox = null;
     }
     if (Date.now() - createdAt > timeout) {
-      // assume sandbox is gone now since it's past the timeout
+      // assume sandbox is gone now since it's expired
       sandbox = null;
     }
-  } 
-  
-  if (!sandbox) {
+  }
+
+  let sandboxUrl: string;
+
+  if (sandbox) {
+    sandboxUrl = sandbox.domain(SANDBOX_PORT);
+  } else {
     console.log(`Creating new sandbox for port ${localPort}`);
     sandbox = await Sandbox.create({
       teamId,
@@ -67,6 +70,7 @@ export async function client({ port, timeout }: { port: number, timeout: number 
       ports: [SANDBOX_PORT], // TODO: allocate multiple ports to map back to local port
       timeout,
     });
+    sandboxUrl = sandbox.domain(SANDBOX_PORT);
     localPortToSandbox[localPort] = { id: sandbox.sandboxId, createdAt: Date.now() };
     await writeFile(
       VGROK_CONFIG_PATH,
@@ -75,40 +79,44 @@ export async function client({ port, timeout }: { port: number, timeout: number 
     // TODO: can we spawn a new sandbox automatically when timeout reached?
     //   setTimeout(async () => { newSandbox() }, timeout);
     // Alternatively we can kill the ngrok process to avoid confusion.
-  }
-  
-  const sandboxUrl = sandbox.domain(SANDBOX_PORT);
-
-  await sandbox.writeFiles([
-   {
-      content: Buffer.from(JSON.stringify({ private: true, type: 'module', dependencies: { ws: '8.18.3' } })),
-      path: 'package.json',
-    },
+ 
+    await sandbox.writeFiles([
     {
-      content: await readFile(join(import.meta.dirname, './server.js')),
-      path: 'server.js',
-    },
-  ]);
-  
-  const pnpm = await sandbox.runCommand('pnpm', ['install']);
-  await writeLogs(pnpm);
+        content: Buffer.from(JSON.stringify({ private: true, type: 'module', dependencies: { ws: '8.18.3' } })),
+        path: 'package.json',
+      },
+      {
+        content: await readFile(join(import.meta.dirname, './server.js')),
+        path: 'server.js',
+      },
+    ]);
+    
+    const pnpm = await sandbox.runCommand('pnpm', ['install']);
+    await writeLogs(pnpm);
 
-  await sandbox.runCommand({
-    cmd: 'node',
-    args: ['server.js'],
-    detached: true,
-    env: {
-      SANDBOX_PORT: String(SANDBOX_PORT),
-      WS_PATH: WS_PATH,
-    },
-    //stderr: process.stderr, // TODO: hide
-    //stdout: process.stdout, // TODO: hide
-  });
+    await sandbox.runCommand({
+      cmd: 'node',
+      args: ['server.js'],
+      detached: true,
+      env: {
+        SANDBOX_PORT: String(SANDBOX_PORT),
+        WS_PATH: WS_PATH,
+      },
+      //stderr: process.stderr, // TODO: hide
+      //stdout: process.stdout, // TODO: hide
+    });
+  }
 
   console.log('Starting local client...');
-  const tunnel = new WebSocket(sandboxUrl + WS_PATH);
+  const socket = new WebSocket(sandboxUrl + WS_PATH);
+  const connected = Promise.withResolvers<void>();
+
+  socket.addEventListener('open', () => {
+    console.log('WebSocket connected to sandbox');
+    connected.resolve();
+  });
   
-  tunnel.addEventListener('message', async (event) => {
+  socket.addEventListener('message', async (event) => {
     const data = event.data as string;
     console.log('Message received from tunnel:', data);
     const tunnelRequest = JSON.parse(data) as TunnelRequest;
@@ -125,7 +133,7 @@ export async function client({ port, timeout }: { port: number, timeout: number 
       let chunks: Buffer[] = [];
       res.on('data', chunk => chunks.push(chunk));
       res.on('end', () => {
-        tunnel.send(JSON.stringify({
+        socket.send(JSON.stringify({
           id,
           statusCode: res.statusCode ?? 999,
           headers: res.headers as Record<string, string>,
@@ -140,20 +148,23 @@ export async function client({ port, timeout }: { port: number, timeout: number 
     req.end();
   });
 
-  tunnel.addEventListener('error', (event) => {
+  socket.addEventListener('error', (event) => {
     // TODO: should this shutdown the sandbox?
-    console.error('Unexpected socket error', event.error);
+    console.error('Unexpected WebSocket error', event.error);
   });
 
-  tunnel.addEventListener('close', (event) => {
+  socket.addEventListener('close', (event) => {
     // TODO: should this shutdown the sandbox?
-    console.error('Socket closed', event);
+    console.error('WebSocket closed', JSON.stringify(event));
     //process.exit(1);
   });
+
+  await connected.promise;
 
   return {
     url: sandboxUrl,
     shutdown: async () => {
+      socket.close();
       await shutdown(sandbox);
     }
   }
