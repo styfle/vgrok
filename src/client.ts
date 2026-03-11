@@ -63,9 +63,9 @@ export async function client({ port, timeout }: { port: number, timeout: number 
       teamId,
       projectId,
       token,
-      runtime: 'node22',
+      runtime: 'node24',
       resources: {
-        vcpus: 2,
+        vcpus: 1,
       },
       ports: [SANDBOX_PORT], // TODO: allocate multiple ports to map back to local port
       timeout,
