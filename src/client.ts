@@ -9,15 +9,17 @@ import { vercelCliAuth } from './vercel-cli-auth.js';
 type VgrokConfig = { localPortToSandbox: Record<string, { id: string, createdAt: number}> };
 
 const SANDBOX_PORT = 3000;
-const WS_PATH = '/_ws';
+const WS_PATH = '/_vgrok_ws';
 const VGROK_CONFIG_PATH = join(tmpdir(), './vgrok-config.json');
+let shuttingDown = false;
 
 async function shutdown(sandbox: Sandbox | null) {
-  console.log('Shutting down sandbox...')
+  shuttingDown = true;
+  process.stdout.write('Shutting down sandbox...')
   if (sandbox) {
     await sandbox.stop();
   }
-  console.log('Done.')
+  process.stdout.write('Done.\n');
 }
 
 async function writeLogs(cmd: CommandFinished) {
@@ -82,7 +84,11 @@ export async function client({ port, timeout }: { port: number, timeout: number 
  
     await sandbox.writeFiles([
     {
-        content: Buffer.from(JSON.stringify({ private: true, type: 'module', dependencies: { ws: '8.18.3' } })),
+        content: Buffer.from(JSON.stringify({
+          private: true,
+          type: 'module',
+          dependencies: { ws: '8.19.0' },
+        })),
         path: 'package.json',
       },
       {
@@ -91,7 +97,11 @@ export async function client({ port, timeout }: { port: number, timeout: number 
       },
     ]);
     
-    const pnpm = await sandbox.runCommand('pnpm', ['install']);
+    const pnpm = await sandbox.runCommand({
+      cmd: 'pnpm',
+      args: ['install'],
+      env: { NPM_CONFIG_UPDATE_NOTIFIER: 'false' }
+    });
     await writeLogs(pnpm);
 
     await sandbox.runCommand({
@@ -154,9 +164,11 @@ export async function client({ port, timeout }: { port: number, timeout: number 
   });
 
   socket.addEventListener('close', (event) => {
-    // TODO: should this shutdown the sandbox?
-    console.error('WebSocket closed', JSON.stringify(event));
-    //process.exit(1);
+    if (!shuttingDown) {
+      // TODO: should this shutdown the sandbox?
+      console.error('WebSocket closed', JSON.stringify(event));
+      //process.exit(1);
+    }
   });
 
   await connected.promise;
