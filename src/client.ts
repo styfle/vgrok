@@ -1,16 +1,13 @@
 import { CommandFinished, Sandbox } from '@vercel/sandbox';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import http from 'node:http';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { hostname } from 'node:os';
 import type { TunnelRequest, TunnelResponse } from './server.js';
 import { vercelCliAuth } from './vercel-cli-auth.js';
 
-type VgrokConfig = { localPortToSandbox: Record<string, { id: string, createdAt: number}> };
-
 const SANDBOX_PORT = 3000;
 const WS_PATH = '/_vgrok_ws';
-const VGROK_CONFIG_PATH = join(tmpdir(), './vgrok-config.json');
 let shuttingDown = false;
 
 async function shutdown(sandbox: Sandbox | null) {
@@ -34,34 +31,19 @@ async function writeLogs(cmd: CommandFinished) {
 
 export async function client({ port, timeout }: { port: number, timeout: number }) {
   const localPort = port;
-  const config = await readFile(VGROK_CONFIG_PATH, 'utf8')
-    .then(str => JSON.parse(str) as VgrokConfig)
-    .catch(() => null);
-  const localPortToSandbox = config ? config.localPortToSandbox : {};
+  const name = `vgrok-${hostname().replaceAll(/[^\w-]/g, '_')}-${localPort}`;
   const { token, teamId, projectId } = vercelCliAuth();
-  let sandbox: Sandbox | null = null;
-
-  if (localPortToSandbox[localPort]) {
-    const { id, createdAt } = localPortToSandbox[localPort];
-    console.log(`Reusing existing sandbox for port ${localPort} with ID ${id}`);
-    sandbox = await Sandbox.get({ teamId, projectId, token, sandboxId: id }).catch(() => null);
-    if (sandbox && sandbox.status !== 'running') {
-      console.log(`Sandbox with ID ${id} is not running`);
-      sandbox = null;
-    }
-    if (Date.now() - createdAt > timeout) {
-      // assume sandbox is gone now since it's expired
-      sandbox = null;
-    }
-  }
-
+  console.log(`Checking existence of sandbox for port ${localPort}`);
+  let sandbox = await Sandbox.get({ teamId, projectId, token, name }).catch(() => null);
   let sandboxUrl: string;
 
   if (sandbox) {
+    console.log(`Found sandbox ${sandbox.name} but it is not running. Current status: ${sandbox.status}`);
     sandboxUrl = sandbox.domain(SANDBOX_PORT);
   } else {
     console.log(`Creating new sandbox for port ${localPort}`);
     sandbox = await Sandbox.create({
+      name,
       teamId,
       projectId,
       token,
@@ -73,15 +55,11 @@ export async function client({ port, timeout }: { port: number, timeout: number 
       timeout,
     });
     sandboxUrl = sandbox.domain(SANDBOX_PORT);
-    localPortToSandbox[localPort] = { id: sandbox.sandboxId, createdAt: Date.now() };
-    await writeFile(
-      VGROK_CONFIG_PATH,
-      JSON.stringify({ localPortToSandbox } satisfies VgrokConfig)
-    );
     // TODO: can we spawn a new sandbox automatically when timeout reached?
     //   setTimeout(async () => { newSandbox() }, timeout);
     // Alternatively we can kill the ngrok process to avoid confusion.
  
+    console.log(`Writing files...`);
     await sandbox.writeFiles([
     {
         content: Buffer.from(JSON.stringify({
@@ -103,19 +81,20 @@ export async function client({ port, timeout }: { port: number, timeout: number 
       env: { NPM_CONFIG_UPDATE_NOTIFIER: 'false' }
     });
     await writeLogs(pnpm);
-
-    await sandbox.runCommand({
-      cmd: 'node',
-      args: ['server.js'],
-      detached: true,
-      env: {
-        SANDBOX_PORT: String(SANDBOX_PORT),
-        WS_PATH: WS_PATH,
-      },
-      //stderr: process.stderr, // TODO: hide
-      //stdout: process.stdout, // TODO: hide
-    });
   }
+
+  console.log('Starting server in sandbox...');
+  await sandbox.runCommand({
+    cmd: 'node',
+    args: ['server.js'],
+    detached: true,
+    env: {
+      SANDBOX_PORT: String(SANDBOX_PORT),
+      WS_PATH: WS_PATH,
+    },
+    //stderr: process.stderr, // TODO: hide
+    //stdout: process.stdout, // TODO: hide
+  });
 
   console.log('Starting local client...');
   const socket = new WebSocket(sandboxUrl + WS_PATH);
