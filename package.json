@@ -3,9 +3,9 @@
   "version": "0.2.1",
   "type": "module",
   "bin": {
-    "vgrok": "./dist/src/vgrok.js"
+    "vgrok": "./dist/vgrok.js"
   },
-  "main": "./dist/src/client.js",
+  "main": "./dist/client.js",
   "files": [
     "dist"
   ],
@@ -22,11 +22,11 @@
   },
   "packageManager": "pnpm@10.14.0",
   "dependencies": {
-    "@vercel/sandbox": "^0.0.16"
+    "@vercel/sandbox": "2.0.0-beta.9"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",
     "@types/ws": "^8.18.1",
-    "@typescript/native-preview": "7.0.0-dev.20260124.1"
+    "@typescript/native-preview": "7.0.0-dev.20260329.1"
   }
 }
